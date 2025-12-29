@@ -3,55 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to Word Converter</title>
+    <title>Universal Converter</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
-        h2 { color: #333; margin-bottom: 20px; }
-        .upload-btn { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 15px; width: 100%; font-size: 16px; transition: 0.2s; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background-color: #f0f2f5; margin: 0; }
+        .grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 300px; transition: 0.3s; }
+        .card:hover { transform: translateY(-5px); }
+        h2 { color: #333; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .upload-btn { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
         .upload-btn:hover { background-color: #0056b3; }
-        input[type="file"] { margin-bottom: 10px; }
-        #status { margin-top: 20px; font-weight: bold; color: #555; height: 20px; }
+        .status { margin-top: 15px; font-weight: bold; font-size: 14px; min-height: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>📄 PDF to Word</h2>
-        <p>Convert your documents instantly.</p>
-        <input type="file" id="pdfInput" accept=".pdf">
-        <button class="upload-btn" onclick="uploadFile()">Convert Now</button>
-        <div id="status"></div>
+    <h1 style="margin-bottom: 30px; color: #444;">🚀 Universal Converter Tool</h1>
+
+    <div class="grid">
+        <div class="card">
+            <h2>📄 PDF to Word</h2>
+            <p>Convert PDF documents to editable Word files.</p>
+            <input type="file" id="pdfInput" accept=".pdf">
+            <button class="upload-btn" onclick="convert('/convert/pdf-to-word', 'pdfInput', 'status1')">Convert to Word</button>
+            <div id="status1" class="status"></div>
+        </div>
+
+        <div class="card">
+            <h2>🖼️ Image to PDF</h2>
+            <p>Turn JPG/PNG images into PDF documents.</p>
+            <input type="file" id="imgInput" accept="image/*">
+            <button class="upload-btn" style="background-color: #28a745;" onclick="convert('/convert/image-to-pdf', 'imgInput', 'status2')">Convert to PDF</button>
+            <div id="status2" class="status"></div>
+        </div>
     </div>
 
     <script>
-        async function uploadFile() {
-            const fileInput = document.getElementById('pdfInput');
-            const status = document.getElementById('status');
+        async function convert(endpoint, inputId, statusId) {
+            const fileInput = document.getElementById(inputId);
+            const status = document.getElementById(statusId);
             
             if (!fileInput.files[0]) {
-                alert("Please select a PDF file first!");
+                alert("Please select a file first!");
                 return;
             }
 
             const formData = new FormData();
             formData.append("file", fileInput.files[0]);
 
-            status.innerText = "Converting... Please wait.";
+            status.innerText = "Uploading & Converting...";
             status.style.color = "#007bff";
 
             try {
-                const response = await fetch('/convert/pdf-to-word', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch(endpoint, { method: 'POST', body: formData });
 
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = "converted.docx";
+                    // Detect file extension based on endpoint
+                    a.download = endpoint.includes("pdf-to-word") ? "converted.docx" : "converted.pdf";
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
