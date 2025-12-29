@@ -2,3 +2,6 @@ fastapi
 uvicorn
 python-multipart
 pdf2docx
+requests
+pillow
+img2pdf
