@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Word Converter</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f2f5; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 350px; }
+        h2 { color: #333; margin-bottom: 20px; }
+        .upload-btn { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 15px; width: 100%; font-size: 16px; transition: 0.2s; }
+        .upload-btn:hover { background-color: #0056b3; }
+        input[type="file"] { margin-bottom: 10px; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>📄 PDF to Word</h2>
+        <p>Convert your documents instantly.</p>
+        <input type="file" id="pdfInput" accept=".pdf">
+        <button class="upload-btn" onclick="uploadFile()">Convert Now</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('pdfInput');
+            const status = document.getElementById('status');
+            
+            if (!fileInput.files[0]) {
+                alert("Please select a PDF file first!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            status.innerText = "Converting... Please wait.";
+            status.style.color = "#007bff";
+
+            try {
+                const response = await fetch('/convert/pdf-to-word', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "converted.docx";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    status.innerText = "Success! Downloading...";
+                    status.style.color = "green";
+                } else {
+                    status.innerText = "Error converting file.";
+                    status.style.color = "red";
+                }
+            } catch (error) {
+                console.error(error);
+                status.innerText = "Server Error.";
+                status.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
