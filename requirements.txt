@@ -1,7 +1,5 @@
-fastapi
-uvicorn
-python-multipart
+streamlit
 pdf2docx
-requests
-pillow
 img2pdf
+pypdf2
+requests
