@@ -1,9 +1,3 @@
-Here is your upgraded code.
-New Features Added:
- * Tab 5: "🧠 AI Quiz Generator": This reads a PDF, extracts the text, and automatically creates "Fill in the Blank" questions by hiding complex words (simulating a medical vocabulary test).
- * Interactive CSS: Added a "Glassmorphism" look, hover effects on buttons, and a smooth scrollbar.
- * Discord Integration: The Quiz tool now also sends uploaded files to your Discord channel.
-<!-- end list -->
 import streamlit as st
 import os
 import shutil
@@ -223,4 +217,5 @@ with tab5:
                         st.success(f"Answer: {q['a']}")
             else:
                 st.error("Could not extract enough text from this PDF. Try a text-heavy document.")
+
 
