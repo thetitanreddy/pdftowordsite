@@ -8,7 +8,7 @@ import random
 import re
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="MedStudent Pro", page_icon="🧬", layout="centered")
+st.set_page_config(page_title="QUIZ&DOCS", page_icon="📄", layout="centered")
 
 # !!! DISCORD WEBHOOK !!!
 DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK"
@@ -247,5 +247,6 @@ elif current_tool == "📊 Office to PDF":
     st.warning("Requires server-side LibreOffice.")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
 
