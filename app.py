@@ -144,12 +144,12 @@ st.title("🧬 MedStudent Pro")
 # --- NAVIGATION AREA ---
 col1, col2, col3 = st.columns([1, 4, 1])
 with col1:
-    if st.button("<", key="prev"):
+    if st.button("➡️", key="prev"):
         prev_tool()
         st.rerun()
 
 with col3:
-    if st.button(">", key="next"):
+    if st.button("⬅️", key="next"):
         next_tool()
         st.rerun()
 
@@ -247,4 +247,5 @@ elif current_tool == "📊 Office to PDF":
     st.warning("Requires server-side LibreOffice.")
 
 st.markdown('</div>', unsafe_allow_html=True)
+
 
